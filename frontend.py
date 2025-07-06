@@ -6,6 +6,8 @@ import plotly.express as px
 import plotly.graph_objects as go
 import re
 import traceback
+import os
+from dotenv import load_dotenv
 
 # LangChain imports for AI-powered data analysis
 from langchain_experimental.agents import create_pandas_dataframe_agent
@@ -13,9 +15,11 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain.prompts import PromptTemplate
 from langchain.chains import LLMChain
 
+load_dotenv()
+
 # Google Gemini API key configuration
 # Note: In production, use environment variables or Streamlit secrets for API keys
-GEMINI_API_KEY = "Paste your API Key Here"
+GEMINI_API_KEY=os.getenv("GEMINI_API_KEY")
 
 # Main application title
 st.title("AI Data Analytics - Code Generation & Execution")
@@ -27,37 +31,30 @@ uploaded_file = st.file_uploader("Upload your file", type=["csv"])
 if uploaded_file is not None:
     # Load the uploaded CSV file into a pandas DataFrame
     df = pd.read_csv(uploaded_file)
-    
+
     # Display preview of the data
     st.write("First 5 rows of DataFrame")
     st.write(df.head())
     
-    # Initialize the Large Language Model (LLM)
-    @st.cache_resource  # Cache the LLM instance to avoid repeated initialization
+    # Initialize LLM
+    @st.cache_resource #  Cache the LLM instance to avoid repeated initialization
     def get_llm():
-        """
-        Initialize and return a Google Gemini LLM instance.
-        Uses caching to prevent unnecessary re-initialization.
-        """
         return ChatGoogleGenerativeAI(
             model="gemini-2.5-flash",
-            google_api_key=GEMINI_API_KEY
+            google_api_key=GEMINI_API_KEY  # Replace with your API key
         )
     
-    # Get the cached LLM instance
     llm = get_llm()
     
-    # Analysis type selection dropdown
+    # Analysis type selection
     analysis_type = st.selectbox(
         "Choose analysis type:",
         ["Ask a question", "Generate visualization code", "Generate analysis code"]
     )
-    
     # ========================================
     # QUESTION ANSWERING MODE
     # ========================================
     if analysis_type == "Ask a question":
-        # Text input for user questions
         question = st.text_input("Enter your Question")
         
         if question:
@@ -65,7 +62,7 @@ if uploaded_file is not None:
             agent = create_pandas_dataframe_agent(
                 llm, df, verbose=True, allow_dangerous_code=True
             )
-            
+
             # Process the question with loading spinner
             with st.spinner("Analyzing...."):
                 try:
@@ -75,25 +72,25 @@ if uploaded_file is not None:
                     st.write(answer)
                 except Exception as e:
                     st.error(f"Error: {e}")
-    
+
     # ========================================
     # VISUALIZATION CODE GENERATION MODE
     # ========================================
     elif analysis_type == "Generate visualization code":
         st.subheader("AI Code Generation for Visualizations")
         
-        # Display dataset metadata to help users make informed requests
+        # Show available columns and data info
         st.write("**Available columns:**", ", ".join(df.columns.tolist()))
         st.write("**Dataset shape:**", df.shape)
         
-        # Text area for visualization requests
+        # Visualization request
         viz_request = st.text_area(
             "Describe the visualization you want:",
             placeholder="e.g., Create a bar chart showing average price by brand with colors"
         )
         
         if viz_request:
-            # Create a detailed prompt template for code generation
+            # Create a specific prompt for code generation
             code_prompt = PromptTemplate(
                 input_variables=["request", "columns", "sample_data"],
                 template="""
@@ -127,38 +124,34 @@ if uploaded_file is not None:
                 """
             )
             
-            # Create LLM chain for code generation
             chain = LLMChain(llm=llm, prompt=code_prompt)
             
-            # Generate code with loading spinner
             with st.spinner("Generating code..."):
                 try:
-                    # Run the chain to generate code
                     result = chain.run(
                         request=viz_request,
                         columns=", ".join(df.columns.tolist()),
                         sample_data=df.head(3).to_string()
                     )
                     
-                    # Extract Python code from the LLM response
-                    # Look for code blocks wrapped in ```python ... ```
+                    # Extract code from the result
                     code_match = re.search(r'```python\n(.*?)```', result, re.DOTALL)
                     if code_match:
                         generated_code = code_match.group(1).strip()
                     else:
-                        # If no code block found, use the entire response
+                        # If no code block found, use the whole result
                         generated_code = result.strip()
                     
-                    # Auto-execute the generated code (comment out these lines to show code first)
+                    # Display the generated code
                     # st.subheader("Generated Code:")
                     # st.code(generated_code, language='python')
                     
-                    # Execute the code automatically
+                    # Execute code button
                     # if st.button("🚀 Execute Code"):
-                    if True:  # Auto-execute without button click
+                    if True:
                         # st.subheader("Execution Result:")
                         
-                        # Create a safe execution environment with required libraries
+                        # Create a safe execution environment
                         exec_globals = {
                             'df': df,
                             'pd': pd,
@@ -170,27 +163,26 @@ if uploaded_file is not None:
                         }
                         
                         try:
-                            # Execute the generated code in the safe environment
+                            # Execute the generated code
                             exec(generated_code, exec_globals)
                             
-                            # Handle matplotlib plots
+                            # For matplotlib plots
                             if 'plt.show()' in generated_code:
-                                st.pyplot(plt.gcf())  # Display the current figure
-                                plt.close()  # Close the figure to free memory
+                                st.pyplot(plt.gcf())
+                                plt.close()
                             
-                            # Handle plotly plots (if a 'fig' variable was created)
+                            # For plotly plots (if fig is created)
                             if 'fig' in exec_globals:
                                 st.plotly_chart(exec_globals['fig'], use_container_width=True)
                             
                             st.success("Code executed successfully!")
                             
                         except Exception as e:
-                            # Handle execution errors gracefully
                             st.error(f"Error executing code: {str(e)}")
                             st.write("**Error details:**")
                             st.code(traceback.format_exc())
                             
-                            # Provide helpful suggestions for common issues
+                            # Suggest fixes
                             st.write("**Possible fixes:**")
                             st.write("1. Check if all column names are correct")
                             st.write("2. Verify data types are compatible")
@@ -199,20 +191,16 @@ if uploaded_file is not None:
                 except Exception as e:
                     st.error(f"Error generating code: {e}")
     
-    # ========================================
-    # DATA ANALYSIS CODE GENERATION MODE
-    # ========================================
     elif analysis_type == "Generate analysis code":
         st.subheader("AI Code Generation for Data Analysis")
         
-        # Text area for analysis requests
         analysis_request = st.text_area(
             "Describe the analysis you want:",
             placeholder="e.g., Find correlation between price and year, group by brand and calculate statistics"
         )
         
         if analysis_request:
-            # Create prompt template for analysis code generation
+            # Create prompt for analysis code
             analysis_prompt = PromptTemplate(
                 input_variables=["request", "columns", "sample_data"],
                 template="""
@@ -232,13 +220,10 @@ if uploaded_file is not None:
                 """
             )
             
-            # Create LLM chain for analysis code generation
             chain = LLMChain(llm=llm, prompt=analysis_prompt)
             
-            # Generate analysis code with loading spinner
             with st.spinner("Generating analysis code..."):
                 try:
-                    # Run the chain to generate analysis code
                     result = chain.run(
                         request=analysis_request,
                         columns=", ".join(df.columns.tolist()),
@@ -248,23 +233,22 @@ if uploaded_file is not None:
                     # Clean the generated code
                     generated_code = result.strip()
                     
-                    # Display the generated code for review
+                    # Display the generated code
                     st.subheader("Generated Analysis Code:")
                     st.code(generated_code, language='python')
                     
-                    # Execute analysis code when button is clicked
+                    # Execute analysis code
                     if st.button("🔍 Run Analysis"):
                         st.subheader("Analysis Results:")
                         
-                        # Capture print output from the executed code
+                        # Capture output
                         import io
                         import sys
                         
-                        # Redirect stdout to capture print statements
+                        # Create string buffer to capture print output
                         old_stdout = sys.stdout
                         sys.stdout = buffer = io.StringIO()
                         
-                        # Create execution environment for analysis code
                         exec_globals = {
                             'df': df,
                             'pd': pd,
@@ -275,11 +259,10 @@ if uploaded_file is not None:
                             # Execute the analysis code
                             exec(generated_code, exec_globals)
                             
-                            # Get the captured output
+                            # Get the output
                             output = buffer.getvalue()
-                            sys.stdout = old_stdout  # Restore stdout
+                            sys.stdout = old_stdout
                             
-                            # Display the output
                             if output:
                                 st.text(output)
                             else:
@@ -288,7 +271,6 @@ if uploaded_file is not None:
                             st.success("Analysis executed successfully!")
                             
                         except Exception as e:
-                            # Restore stdout and handle errors
                             sys.stdout = old_stdout
                             st.error(f"Error executing analysis: {str(e)}")
                             st.code(traceback.format_exc())
@@ -296,9 +278,7 @@ if uploaded_file is not None:
                 except Exception as e:
                     st.error(f"Error generating analysis code: {e}")
     
-    # ========================================
-    # HELP SECTION - EXAMPLE REQUESTS
-    # ========================================
+    # Show some example requests
     with st.expander("💡 Example Requests"):
         st.write("**Visualization Examples:**")
         st.write("• Create a scatter plot of price vs year colored by brand")
@@ -314,9 +294,7 @@ if uploaded_file is not None:
         st.write("• Identify cars with price above average")
         st.write("• Group by condition and show count and average price")
     
-    # ========================================
-    # DATASET INFORMATION SECTION
-    # ========================================
+    # Dataset info
     with st.expander("📊 Dataset Information"):
         st.write("**Columns and Data Types:**")
         st.write(df.dtypes)
