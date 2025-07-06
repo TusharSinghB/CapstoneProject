@@ -19,7 +19,7 @@ pip install streamlit pandas matplotlib seaborn plotly langchain-experimental la
 3. **Run the app:**
 
 ```bash
-streamlit run app.py
+python -m streamlit run app.py
 ```
 
 4. **Upload CSV and start analyzing!**
