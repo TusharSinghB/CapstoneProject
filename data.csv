@@ -1,0 +1,11 @@
+car,year,price,brand,model,mileage,fuel_type,transmission,color,condition
+Honda Civic,2020,22000,Honda,Civic,45000,Gasoline,Manual,Blue,Good
+Toyota Camry,2019,24500,Toyota,Camry,38000,Gasoline,Automatic,Silver,Excellent
+Ford Mustang,2021,35000,Ford,Mustang,25000,Gasoline,Manual,Red,Excellent
+BMW 3 Series,2018,28000,BMW,3 Series,52000,Gasoline,Automatic,Black,Good
+Audi A4,2020,32000,Audi,A4,30000,Gasoline,Automatic,White,Excellent
+Chevrolet Malibu,2017,18000,Chevrolet,Malibu,65000,Gasoline,Automatic,Gray,Fair
+Tesla Model 3,2022,45000,Tesla,Model 3,15000,Electric,Automatic,Blue,Excellent
+Mercedes C-Class,2019,38000,Mercedes,C-Class,42000,Gasoline,Automatic,Black,Good
+Volkswagen Jetta,2020,20000,Volkswagen,Jetta,35000,Gasoline,Manual,White,Good
+Nissan Altima,2018,19500,Nissan,Altima,55000,Gasoline,Automatic,Silver,Fair
