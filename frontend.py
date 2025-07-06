@@ -190,10 +190,11 @@ if uploaded_file is not None:
                     
                 except Exception as e:
                     st.error(f"Error generating code: {e}")
-    
+    # ========================================
+    # DATA ANALYSIS CODE GENERATION MODE
+    # ========================================
     elif analysis_type == "Generate analysis code":
         st.subheader("AI Code Generation for Data Analysis")
-        
         analysis_request = st.text_area(
             "Describe the analysis you want:",
             placeholder="e.g., Find correlation between price and year, group by brand and calculate statistics"
@@ -231,7 +232,12 @@ if uploaded_file is not None:
                     )
                     
                     # Clean the generated code
-                    generated_code = result.strip()
+                    generated_code = re.search(r'```python\n(.*?)```', result, re.DOTALL)
+                    if generated_code:
+                        generated_code = generated_code.group(1).strip()
+                    else:
+                        # If no code block found, use the whole result
+                        generated_code = result.strip()
                     
                     # Display the generated code
                     st.subheader("Generated Analysis Code:")
